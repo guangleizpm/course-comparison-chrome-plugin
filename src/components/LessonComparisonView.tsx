@@ -191,6 +191,17 @@ export const LessonComparisonView: React.FC<LessonComparisonViewProps> = ({
     return (lesson.metadata.children as Array<{ id: string; title: string; type: string }>) || [];
   };
 
+  // Get Unit and Split from lesson metadata
+  const getLessonUnit = (lesson: Lesson | null): string | null => {
+    if (!lesson || !lesson.metadata) return null;
+    return lesson.metadata.unitTitle || lesson.metadata.parentUnit || null;
+  };
+
+  const getLessonSplit = (lesson: Lesson | null): string | null => {
+    if (!lesson || !lesson.metadata) return null;
+    return lesson.metadata.splitTitle || lesson.metadata.parentSplit || null;
+  };
+
   // Compare children between two lessons
   const compareChildren = (
     anchorChildren: Array<{ id: string; title: string; type: string }>,
@@ -240,6 +251,22 @@ export const LessonComparisonView: React.FC<LessonComparisonViewProps> = ({
             const comparedChildren = getLessonChildren(comparison.comparedLesson);
             const hasChildren = anchorChildren.length > 0 || comparedChildren.length > 0;
             
+            // Get Unit and Split information
+            const anchorUnit = getLessonUnit(comparison.anchorLesson);
+            const anchorSplit = getLessonSplit(comparison.anchorLesson);
+            const comparedUnit = getLessonUnit(comparison.comparedLesson);
+            const comparedSplit = getLessonSplit(comparison.comparedLesson);
+            
+            // Check if we need to show a Unit/Split header (when it changes from previous lesson or is first lesson)
+            const prevComparison = index > 0 ? comparisons[index - 1] : null;
+            const prevAnchorUnit = prevComparison ? getLessonUnit(prevComparison.anchorLesson) : null;
+            const prevAnchorSplit = prevComparison ? getLessonSplit(prevComparison.anchorLesson) : null;
+            const showUnitHeader = (anchorUnit || anchorSplit) && (
+              index === 0 || 
+              anchorUnit !== prevAnchorUnit || 
+              anchorSplit !== prevAnchorSplit
+            );
+            
             // For removed lessons, show only anchor children
             // For added lessons, show only compared children
             // For matched lessons, compare both
@@ -275,6 +302,29 @@ export const LessonComparisonView: React.FC<LessonComparisonViewProps> = ({
             
             return (
               <div key={`comparison-${index}`}>
+                {/* Unit/Split Header - Show when Unit or Split changes */}
+                {showUnitHeader && (
+                  <div className="unit-split-header">
+                    <div className="unit-split-col anchor-col">
+                      {anchorSplit && (
+                        <div className="split-badge">{anchorSplit}</div>
+                      )}
+                      {anchorUnit && (
+                        <div className="unit-badge">Unit: {anchorUnit}</div>
+                      )}
+                    </div>
+                    <div className="unit-split-col compared-col">
+                      {comparedSplit && (
+                        <div className="split-badge">{comparedSplit}</div>
+                      )}
+                      {comparedUnit && (
+                        <div className="unit-badge">Unit: {comparedUnit}</div>
+                      )}
+                    </div>
+                    <div className="unit-split-spacer"></div>
+                  </div>
+                )}
+                
                 <div
                   className={`lesson-comparison-row ${getStatusClass(comparison.status)}`}
                 >
@@ -282,6 +332,13 @@ export const LessonComparisonView: React.FC<LessonComparisonViewProps> = ({
                 {comparison.anchorLesson ? (
                   <div className="lesson-item">
                     <div className="lesson-order">#{comparison.anchorOrder}</div>
+                    {/* Show Unit/Split inline if not shown in header */}
+                    {!showUnitHeader && (anchorUnit || anchorSplit) && (
+                      <div className="lesson-context">
+                        {anchorSplit && <span className="context-split">{anchorSplit}</span>}
+                        {anchorUnit && <span className="context-unit">Unit: {anchorUnit}</span>}
+                      </div>
+                    )}
                     <div className="lesson-title">{comparison.anchorLesson.title}</div>
                     {comparison.anchorLesson.variant && (
                       <div className="lesson-variant">{comparison.anchorLesson.variant}</div>
@@ -295,6 +352,13 @@ export const LessonComparisonView: React.FC<LessonComparisonViewProps> = ({
                     {comparison.comparedLesson ? (
                       <div className="lesson-item">
                         <div className="lesson-order">#{comparison.comparedOrder}</div>
+                        {/* Show Unit/Split inline if not shown in header */}
+                        {!showUnitHeader && (comparedUnit || comparedSplit) && (
+                          <div className="lesson-context">
+                            {comparedSplit && <span className="context-split">{comparedSplit}</span>}
+                            {comparedUnit && <span className="context-unit">Unit: {comparedUnit}</span>}
+                          </div>
+                        )}
                         <div className="lesson-title">{comparison.comparedLesson.title}</div>
                         {comparison.comparedLesson.variant && (
                           <div className="lesson-variant">{comparison.comparedLesson.variant}</div>

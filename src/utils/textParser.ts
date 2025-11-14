@@ -142,20 +142,46 @@ function buildHierarchyTree(rows: TextRow[]): HierarchyNode[] {
         nodeStack.length = 0;
         nodeStack.push(node);
       }
+    } else if (node.type === 'Test') {
+      // Test (Type = Test) is child of current Unit (or Split if no Unit)
+      // This is different from Quiz which is a child of Test
+      let parent = nodeStack.find(n => n.type === 'Unit');
+      if (!parent) {
+        parent = nodeStack.find(n => n.type === 'Split');
+      }
+      if (parent) {
+        parent.children.push(node);
+        node.parent = parent;
+        // Add Test to stack so Quiz can be its child
+        const testIndex = nodeStack.findIndex(n => n.type === 'Test');
+        if (testIndex !== -1) {
+          nodeStack.splice(testIndex, 1);
+        }
+        nodeStack.push(node);
+      } else {
+        // No parent, treat as root
+        rootNodes.push(node);
+        nodeStack.length = 0;
+        nodeStack.push(node);
+      }
     } else if (
       node.type === 'Activity' ||
       node.type === 'Quiz' ||
-      node.type === 'Test' ||
       node.type === 'Exam'
     ) {
-      // Activity/Quiz/Test/Exam is child of current Lesson
-      const parent = nodeStack.find(n => n.type === 'EdgeEx Lesson');
+      // Activity/Quiz/Exam can be child of EdgeEx Lesson or Test
+      // First try to find Test parent (for Quiz children of Test)
+      let parent = nodeStack.find(n => n.type === 'Test');
+      // If no Test parent, try EdgeEx Lesson
+      if (!parent) {
+        parent = nodeStack.find(n => n.type === 'EdgeEx Lesson');
+      }
       if (parent) {
         parent.children.push(node);
         node.parent = parent;
         // Don't add to stack, these are leaf nodes
       } else {
-        // No parent Lesson, treat as standalone (shouldn't happen in proper hierarchy)
+        // No parent, try to attach to Unit as fallback
         const unitParent = nodeStack.find(n => n.type === 'Unit');
         if (unitParent) {
           unitParent.children.push(node);
@@ -227,11 +253,11 @@ export function textRowsToHierarchy(rows: TextRow[], hierarchyName: string = 'Pa
   const baseId = firstSplit?.id || rows[0]?.id || '';
   const hierarchyId = baseId ? `${baseId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : `hierarchy-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
-  // Extract lessons from tree (only EdgeEx Lessons become top-level lessons)
+  // Extract lessons from tree (EdgeEx Lessons and Test (Type = Test) become top-level lessons)
   const lessons: Lesson[] = [];
   let order = 1;
   
-  // Recursively extract EdgeEx Lessons from tree
+  // Recursively extract lessons from tree
   function extractLessons(nodes: HierarchyNode[], currentSplit?: string, currentUnit?: string) {
     nodes.forEach((node) => {
       if (node.type === 'Split') {
@@ -240,9 +266,10 @@ export function textRowsToHierarchy(rows: TextRow[], hierarchyName: string = 'Pa
       } else if (node.type === 'Unit') {
         // Recurse into unit children
         extractLessons(node.children, currentSplit, node.title);
-      } else if (node.type === 'EdgeEx Lesson') {
-        // This is a lesson - create Lesson object
+      } else if (node.type === 'EdgeEx Lesson' || node.type === 'Test') {
+        // This is a lesson or test - create Lesson object
         // Collect all children (Activities, Quizzes, etc.)
+        // For Test nodes, collect Quiz children
         const children = node.children.map(child => ({
           id: child.id,
           title: child.title,
@@ -253,13 +280,13 @@ export function textRowsToHierarchy(rows: TextRow[], hierarchyName: string = 'Pa
           id: node.id, // Use ID from column 3 as unique identifier
           title: node.title,
           order: order++,
-          variant: undefined,
+          variant: node.type === 'Test' ? 'Test' : undefined,
           metadata: {
             type: node.type,
             unitTitle: currentUnit || '',
             splitTitle: currentSplit || '',
             originalId: node.id,
-            children: children, // Store Activities/Quizzes as children
+            children: children, // Store Activities/Quizzes/Test children as children
             parentUnit: currentUnit,
             parentSplit: currentSplit,
           },

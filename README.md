@@ -15,7 +15,9 @@ Chrome extension with side panel for comparing course hierarchies (IC, CR, Honor
   - Match lessons using Alignment Identifier
   - Detect missing, extra, and reordered lessons
   - Compare lesson variants
-  - **Compare lesson children** (Activities, Quizzes, etc.)
+  - **Compare lesson children** (Activities, Quizzes, Tests, etc.)
+  - **Unit and Split Display**: Shows Unit and Split (Semester) information for each lesson
+  - **Hierarchical Structure Support**: Handles complex hierarchies like Unit → Test → Quiz
 - **Metadata Comparison**: 
   - Subject consistency checks
   - Implementation model verification
@@ -23,7 +25,7 @@ Chrome extension with side panel for comparing course hierarchies (IC, CR, Honor
 - **Order Analysis**: Verify lesson ordering consistency across hierarchies
 - **Multiple View Modes**:
   - Metadata Issues: Consistency checks for metadata
-  - Lesson Comparison: Detailed lesson-by-lesson comparison
+  - Lesson Comparison: Detailed lesson-by-lesson comparison with Unit/Split context
 - **Product Rules Validation**: 
   - Science: Virtual labs limit, project requirements, teacher-graded content removal
   - Math: Short writings requirement, teacher-graded content removal
@@ -88,6 +90,11 @@ npm run build:extension
 - Select an anchor course from the uploaded/pasted courses
 - View comparison results in the comparison section
 - Switch between "Metadata Issues" and "Lesson Comparison" tabs
+- **In Lesson Comparison view**:
+  - See Unit and Split (Semester) information for each lesson
+  - Unit headers appear when Unit/Split changes between lessons
+  - Each lesson shows its Unit context (format: "Unit: [Title]")
+  - Review lesson children (Activities, Quizzes, Tests) differences
 - Review differences, order issues, and metadata mismatches
 
 ### Development
@@ -160,6 +167,11 @@ npm run lint
 - Parses tab-separated text input
 - Builds hierarchy tree structure
 - Handles nested course/unit/lesson relationships
+- **Supports complex hierarchies**:
+  - Split → Unit → EdgeEx Lesson → Activity/Quiz
+  - Split → Unit → Test (Type = Test) → Quiz (Type = Quiz)
+- Extracts Test (Type = Test) as top-level lessons for comparison
+- Preserves Unit and Split information in lesson metadata
 - Converts text data to Hierarchy objects
 
 ### Comparison Engine (`comparisonEngine.ts`)
@@ -188,7 +200,13 @@ npm run lint
 - Side-by-side lesson comparison
 - Matches lessons by Alignment Identifier
 - Shows lesson status (same, removed, added, order-changed)
-- Displays lesson children differences
+- **Unit and Split Display**: 
+  - Shows Unit headers when Unit/Split changes between lessons
+  - Displays "Unit: [Title]" format for clarity
+  - Shows Split (Semester) information
+  - Inline Unit/Split context for individual lessons
+- Displays lesson children differences (Activities, Quizzes, Tests)
+- Handles complex hierarchies: Unit → Test (Type = Test) → Quiz (Type = Quiz)
 
 ## Chrome Extension Features
 
@@ -221,11 +239,26 @@ The parser automatically:
 ## Text Paste Format
 
 When using paste mode, provide tab-separated text with:
-- **Title**: Lesson or unit title
-- **Type**: Type of item (Course, Unit, Lesson, Activity, Quiz, etc.)
+- **Title**: Lesson, unit, or item title
+- **Type**: Type of item (Split, Unit, EdgeEx Lesson, Test, Activity, Quiz, Exam, etc.)
 - **ID**: Unique identifier for matching
 
-The parser builds a hierarchical structure from the pasted data.
+### Supported Hierarchy Structure
+
+The parser supports the following hierarchy:
+- **Split** (e.g., "Semester A", "Semester B")
+  - **Unit** (e.g., "Ecosystem Interactions and Energy")
+    - **EdgeEx Lesson** (top-level lessons)
+      - **Activity** / **Quiz** / **Exam** (children of lessons)
+    - **Test** (Type = Test) - treated as top-level lesson
+      - **Quiz** (Type = Quiz) - children of Test
+      - **Practice Test** (Type = Quiz) - children of Test
+
+The parser automatically:
+- Builds the hierarchical tree structure
+- Extracts EdgeEx Lessons and Test (Type = Test) as top-level lessons
+- Stores Activities, Quizzes, and other children in lesson metadata
+- Preserves Unit and Split information for display in comparisons
 
 ## Technical Details
 
@@ -244,7 +277,12 @@ The parser builds a hierarchical structure from the pasted data.
 - **Extra Lessons**: Detected when compared hierarchy has lessons not in anchor
 - **Order Changes**: Detected when lesson order differs between hierarchies
 - **Variant Differences**: Detected when lesson variants don't match
-- **Children Comparison**: Compares Activities and Quizzes within matching lessons
+- **Children Comparison**: Compares Activities, Quizzes, and Tests within matching lessons
+- **Unit/Split Context**: Displays Unit and Split information to provide context for each lesson
+  - Shows "Unit: [Title]" format for clarity
+  - Displays Split (Semester) information
+  - Headers appear when Unit/Split changes between lessons
+  - Inline display for individual lessons when not in a header
 
 ## Notes
 

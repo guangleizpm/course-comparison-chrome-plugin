@@ -156,6 +156,71 @@
   line-height: 1.2;
 }
 
+/* Unit and Split display */
+.unit-split-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  background: #e8f4f8;
+  border-bottom: 2px solid #b3d9e6;
+  padding: 10px 12px;
+  margin-top: 8px;
+}
+
+.unit-split-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.unit-split-col.anchor-col {
+  background: #e8f0ff;
+}
+
+.unit-split-col.compared-col {
+  background: #e8f8f0;
+}
+
+.unit-split-spacer {
+  min-width: 120px;
+}
+
+.split-badge {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: #0066cc;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.unit-badge {
+  font-size: 0.8em;
+  font-weight: 600;
+  color: #004d99;
+  padding-left: 8px;
+}
+
+.lesson-context {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.context-split {
+  font-size: 0.75em;
+  font-weight: 700;
+  color: #0066cc;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.context-unit {
+  font-size: 0.7em;
+  font-weight: 600;
+  color: #004d99;
+  padding-left: 4px;
+}
+
 .lesson-status-badge {
   padding: 8px 12px;
   display: flex;
