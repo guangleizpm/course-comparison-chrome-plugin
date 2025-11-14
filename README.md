@@ -170,8 +170,10 @@ npm run lint
 - **Supports complex hierarchies**:
   - Split → Unit → EdgeEx Lesson → Activity/Quiz
   - Split → Unit → Test (Type = Test) → Quiz (Type = Quiz)
-- Extracts Test (Type = Test) as top-level lessons for comparison
+  - Split → Exam (Exam is child of Split, same level as Unit)
+- Extracts EdgeEx Lessons, Test (Type = Test), and Exam as top-level lessons for comparison
 - Preserves Unit and Split information in lesson metadata
+- Exam nodes have no Unit parent (they're direct children of Split)
 - Converts text data to Hierarchy objects
 
 ### Comparison Engine (`comparisonEngine.ts`)
@@ -249,16 +251,18 @@ The parser supports the following hierarchy:
 - **Split** (e.g., "Semester A", "Semester B")
   - **Unit** (e.g., "Ecosystem Interactions and Energy")
     - **EdgeEx Lesson** (top-level lessons)
-      - **Activity** / **Quiz** / **Exam** (children of lessons)
+      - **Activity** / **Quiz** (children of lessons)
     - **Test** (Type = Test) - treated as top-level lesson
       - **Quiz** (Type = Quiz) - children of Test
       - **Practice Test** (Type = Quiz) - children of Test
+  - **Exam** (child of Split, same level as Unit) - treated as top-level lesson
 
 The parser automatically:
 - Builds the hierarchical tree structure
-- Extracts EdgeEx Lessons and Test (Type = Test) as top-level lessons
+- Extracts EdgeEx Lessons, Test (Type = Test), and Exam as top-level lessons
 - Stores Activities, Quizzes, and other children in lesson metadata
 - Preserves Unit and Split information for display in comparisons
+- Exam nodes have no Unit (they're children of Split, not Unit)
 
 ## Technical Details
 

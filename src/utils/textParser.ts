@@ -3,7 +3,8 @@
  * Parses tab-separated text pasted from clipboard and converts to Hierarchy objects
  * Handles hierarchical course data with Title, Type, and ID columns
  * Builds proper hierarchy: Split -> Unit -> Lesson -> Activity/Quiz
- * Only EdgeEx Lessons are top-level lessons; Activities/Quizzes are stored as children
+ * Also handles: Split -> Exam (Exam is child of Split, same level as Unit)
+ * Only EdgeEx Lessons, Test (Type = Test), and Exam are top-level lessons; Activities/Quizzes are stored as children
  */
 
 import { Hierarchy, Lesson, HierarchyVersion, ImplementationModel } from '../types';
@@ -164,12 +165,22 @@ function buildHierarchyTree(rows: TextRow[]): HierarchyNode[] {
         nodeStack.length = 0;
         nodeStack.push(node);
       }
+    } else if (node.type === 'Exam') {
+      // Exam is child of Split (same level as Unit)
+      const parent = nodeStack.find(n => n.type === 'Split');
+      if (parent) {
+        parent.children.push(node);
+        node.parent = parent;
+        // Don't add to stack, Exam is a leaf node but will be extracted as a top-level lesson
+      } else {
+        // No parent Split, treat as root
+        rootNodes.push(node);
+      }
     } else if (
       node.type === 'Activity' ||
-      node.type === 'Quiz' ||
-      node.type === 'Exam'
+      node.type === 'Quiz'
     ) {
-      // Activity/Quiz/Exam can be child of EdgeEx Lesson or Test
+      // Activity/Quiz can be child of EdgeEx Lesson or Test
       // First try to find Test parent (for Quiz children of Test)
       let parent = nodeStack.find(n => n.type === 'Test');
       // If no Test parent, try EdgeEx Lesson
@@ -253,7 +264,7 @@ export function textRowsToHierarchy(rows: TextRow[], hierarchyName: string = 'Pa
   const baseId = firstSplit?.id || rows[0]?.id || '';
   const hierarchyId = baseId ? `${baseId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` : `hierarchy-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
-  // Extract lessons from tree (EdgeEx Lessons and Test (Type = Test) become top-level lessons)
+  // Extract lessons from tree (EdgeEx Lessons, Test (Type = Test), and Exam become top-level lessons)
   const lessons: Lesson[] = [];
   let order = 1;
   
@@ -266,10 +277,11 @@ export function textRowsToHierarchy(rows: TextRow[], hierarchyName: string = 'Pa
       } else if (node.type === 'Unit') {
         // Recurse into unit children
         extractLessons(node.children, currentSplit, node.title);
-      } else if (node.type === 'EdgeEx Lesson' || node.type === 'Test') {
-        // This is a lesson or test - create Lesson object
+      } else if (node.type === 'EdgeEx Lesson' || node.type === 'Test' || node.type === 'Exam') {
+        // This is a lesson, test, or exam - create Lesson object
         // Collect all children (Activities, Quizzes, etc.)
         // For Test nodes, collect Quiz children
+        // For Exam nodes, they have no children (they're leaf nodes at Split level)
         const children = node.children.map(child => ({
           id: child.id,
           title: child.title,
@@ -280,14 +292,14 @@ export function textRowsToHierarchy(rows: TextRow[], hierarchyName: string = 'Pa
           id: node.id, // Use ID from column 3 as unique identifier
           title: node.title,
           order: order++,
-          variant: node.type === 'Test' ? 'Test' : undefined,
+          variant: node.type === 'Test' ? 'Test' : node.type === 'Exam' ? 'Exam' : undefined,
           metadata: {
             type: node.type,
-            unitTitle: currentUnit || '',
+            unitTitle: currentUnit || '', // Exam has no Unit (it's child of Split)
             splitTitle: currentSplit || '',
             originalId: node.id,
-            children: children, // Store Activities/Quizzes/Test children as children
-            parentUnit: currentUnit,
+            children: children, // Store Activities/Quizzes/Test children as children (empty for Exam)
+            parentUnit: currentUnit, // Exam will have empty parentUnit
             parentSplit: currentSplit,
           },
         };
