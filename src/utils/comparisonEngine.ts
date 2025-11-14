@@ -7,6 +7,60 @@
 import { Hierarchy, ComparisonResult, Lesson, Difference, MetadataIssue, LessonOrderIssue } from '../types';
 
 /**
+ * Compare children (Activities/Quizzes) within a lesson
+ */
+function compareLessonChildren(
+  anchorLesson: Lesson,
+  comparedLesson: Lesson,
+  _comparedHierarchyId: string
+): Difference[] {
+  const differences: Difference[] = [];
+  
+  // Get children from metadata
+  const anchorChildren = (anchorLesson.metadata?.children as Array<{ id: string; title: string; type: string }>) || [];
+  const comparedChildren = (comparedLesson.metadata?.children as Array<{ id: string; title: string; type: string }>) || [];
+  
+  // Create maps for quick lookup by ID
+  const anchorChildrenMap = new Map<string, { id: string; title: string; type: string }>();
+  anchorChildren.forEach(child => {
+    anchorChildrenMap.set(child.id, child);
+  });
+  
+  const comparedChildrenMap = new Map<string, { id: string; title: string; type: string }>();
+  comparedChildren.forEach(child => {
+    comparedChildrenMap.set(child.id, child);
+  });
+  
+  // Find missing children in compared lesson
+  anchorChildren.forEach(anchorChild => {
+    if (!comparedChildrenMap.has(anchorChild.id)) {
+      differences.push({
+        type: 'missing',
+        level: 'lesson',
+        path: `Lesson: ${anchorLesson.title} > ${anchorChild.type}: ${anchorChild.title}`,
+        description: `${anchorChild.type} "${anchorChild.title}" is missing in compared lesson "${comparedLesson.title}"`,
+        severity: 'error',
+      });
+    }
+  });
+  
+  // Find extra children in compared lesson
+  comparedChildren.forEach(comparedChild => {
+    if (!anchorChildrenMap.has(comparedChild.id)) {
+      differences.push({
+        type: 'extra',
+        level: 'lesson',
+        path: `Lesson: ${comparedLesson.title} > ${comparedChild.type}: ${comparedChild.title}`,
+        description: `Extra ${comparedChild.type} "${comparedChild.title}" found in compared lesson "${comparedLesson.title}"`,
+        severity: 'info',
+      });
+    }
+  });
+  
+  return differences;
+}
+
+/**
  * Compare lessons between hierarchies using alignment identifiers
  */
 function compareLessons(
@@ -74,6 +128,10 @@ function compareLessons(
           severity: 'warning',
         });
       }
+      
+      // Compare children (Activities/Quizzes) within the lesson
+      const childrenDifferences = compareLessonChildren(anchorLesson, comparedLesson, comparedHierarchyId);
+      differences.push(...childrenDifferences);
     }
   });
 

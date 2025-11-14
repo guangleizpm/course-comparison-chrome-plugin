@@ -29,14 +29,17 @@ const getBaseLessonId = (lessonId: string): string => {
   return lessonId;
 };
 
-// Match lessons by base ID or title similarity
+// Match lessons by exact ID, base ID, or title similarity
 const findMatchingLesson = (
   anchorLesson: Lesson,
   comparedLessons: Lesson[]
 ): Lesson | null => {
-  const baseId = getBaseLessonId(anchorLesson.id);
+  // First try exact ID match (for pasted data and CSV data with exact IDs)
+  const exactMatch = comparedLessons.find(lesson => lesson.id === anchorLesson.id);
+  if (exactMatch) return exactMatch;
   
-  // First try to match by base ID
+  // Then try base ID match (for CSV data with prefixed IDs)
+  const baseId = getBaseLessonId(anchorLesson.id);
   const matchById = comparedLessons.find(lesson => {
     const comparedBaseId = getBaseLessonId(lesson.id);
     return comparedBaseId === baseId;
@@ -44,7 +47,7 @@ const findMatchingLesson = (
   
   if (matchById) return matchById;
   
-  // Fallback: match by title (for lessons with same content)
+  // Fallback: match by title (for lessons with same content but different IDs)
   const matchByTitle = comparedLessons.find(lesson => 
     lesson.title === anchorLesson.title
   );
@@ -86,9 +89,10 @@ const generateLessonComparisons = (
   });
   
   // Find lessons added in compared course (not in anchor)
+  const addedLessons: LessonComparison[] = [];
   comparedLessons.forEach(comparedLesson => {
     if (!matchedComparedIds.has(comparedLesson.id)) {
-      comparisons.push({
+      addedLessons.push({
         anchorLesson: null,
         comparedLesson,
         status: 'added',
@@ -98,15 +102,40 @@ const generateLessonComparisons = (
     }
   });
   
-  // Sort by anchor order, then by compared order for added lessons
-  return comparisons.sort((a, b) => {
-    if (a.anchorOrder === 0) return 1; // Added lessons go to end
-    if (b.anchorOrder === 0) return -1;
+  // Sort comparisons by anchor order (matched lessons)
+  comparisons.sort((a, b) => {
     if (a.anchorOrder !== b.anchorOrder) {
       return a.anchorOrder - b.anchorOrder;
     }
     return (a.comparedOrder || 0) - (b.comparedOrder || 0);
   });
+  
+  // Insert added lessons at their correct position based on compared order
+  // Sort added lessons by their compared order
+  addedLessons.sort((a, b) => (a.comparedOrder || 0) - (b.comparedOrder || 0));
+  
+  // For each added lesson, find where it should be inserted based on compared order
+  addedLessons.forEach(addedLesson => {
+    const addedOrder = addedLesson.comparedOrder || 0;
+    
+    // Find the first comparison where the compared order is greater than the added lesson's order
+    // This ensures added lessons appear in the same order as in the compared course
+    const insertIndex = comparisons.findIndex(comp => {
+      // Only consider comparisons that have a comparedOrder (matched or other added lessons)
+      if (comp.comparedOrder === null) return false;
+      return comp.comparedOrder > addedOrder;
+    });
+    
+    if (insertIndex === -1) {
+      // Add at the end if no insertion point found (added lesson is after all existing lessons)
+      comparisons.push(addedLesson);
+    } else {
+      // Insert at the correct position (before the first lesson with higher compared order)
+      comparisons.splice(insertIndex, 0, addedLesson);
+    }
+  });
+  
+  return comparisons;
 };
 
 export const LessonComparisonView: React.FC<LessonComparisonViewProps> = ({
@@ -156,6 +185,36 @@ export const LessonComparisonView: React.FC<LessonComparisonViewProps> = ({
     }
   };
 
+  // Get children (Activities/Quizzes) from lesson metadata
+  const getLessonChildren = (lesson: Lesson | null): Array<{ id: string; title: string; type: string }> => {
+    if (!lesson || !lesson.metadata?.children) return [];
+    return (lesson.metadata.children as Array<{ id: string; title: string; type: string }>) || [];
+  };
+
+  // Compare children between two lessons
+  const compareChildren = (
+    anchorChildren: Array<{ id: string; title: string; type: string }>,
+    comparedChildren: Array<{ id: string; title: string; type: string }>
+  ) => {
+    const anchorMap = new Map(anchorChildren.map(c => [c.id, c]));
+    const comparedMap = new Map(comparedChildren.map(c => [c.id, c]));
+    
+    const allChildIds = new Set([...anchorChildren.map(c => c.id), ...comparedChildren.map(c => c.id)]);
+    
+    return Array.from(allChildIds).map(id => {
+      const anchorChild = anchorMap.get(id);
+      const comparedChild = comparedMap.get(id);
+      
+      if (anchorChild && comparedChild) {
+        return { anchorChild, comparedChild, status: 'same' as const };
+      } else if (anchorChild) {
+        return { anchorChild, comparedChild: null, status: 'removed' as const };
+      } else {
+        return { anchorChild: null, comparedChild, status: 'added' as const };
+      }
+    });
+  };
+
   return (
     <div className="lesson-comparison-view">
       <div className="lesson-comparison-header">
@@ -176,12 +235,50 @@ export const LessonComparisonView: React.FC<LessonComparisonViewProps> = ({
         </div>
 
         <div className="lesson-table-body">
-          {comparisons.map((comparison, index) => (
-            <div
-              key={`comparison-${index}`}
-              className={`lesson-comparison-row ${getStatusClass(comparison.status)}`}
-            >
-              <div className="lesson-col anchor-col">
+          {comparisons.map((comparison, index) => {
+            const anchorChildren = getLessonChildren(comparison.anchorLesson);
+            const comparedChildren = getLessonChildren(comparison.comparedLesson);
+            const hasChildren = anchorChildren.length > 0 || comparedChildren.length > 0;
+            
+            // For removed lessons, show only anchor children
+            // For added lessons, show only compared children
+            // For matched lessons, compare both
+            let childrenToDisplay: Array<{
+              anchorChild: { id: string; title: string; type: string } | null;
+              comparedChild: { id: string; title: string; type: string } | null;
+              status: 'same' | 'removed' | 'added';
+            }> = [];
+            
+            if (comparison.status === 'removed' && anchorChildren.length > 0) {
+              // Removed lesson - show all anchor children as removed
+              childrenToDisplay = anchorChildren.map(child => ({
+                anchorChild: child,
+                comparedChild: null,
+                status: 'removed' as const,
+              }));
+            } else if (comparison.status === 'added' && comparedChildren.length > 0) {
+              // Added lesson - show all compared children as added
+              childrenToDisplay = comparedChildren.map(child => ({
+                anchorChild: null,
+                comparedChild: child,
+                status: 'added' as const,
+              }));
+            } else if (comparison.anchorLesson && comparison.comparedLesson) {
+              // Matched lesson - compare children
+              const compared = compareChildren(anchorChildren, comparedChildren);
+              childrenToDisplay = compared.map(comp => ({
+                anchorChild: comp.anchorChild || null,
+                comparedChild: comp.comparedChild || null,
+                status: comp.status,
+              }));
+            }
+            
+            return (
+              <div key={`comparison-${index}`}>
+                <div
+                  className={`lesson-comparison-row ${getStatusClass(comparison.status)}`}
+                >
+              <div className={`lesson-col anchor-col ${comparison.status === 'added' ? 'empty-cell' : ''}`}>
                 {comparison.anchorLesson ? (
                   <div className="lesson-item">
                     <div className="lesson-order">#{comparison.anchorOrder}</div>
@@ -194,24 +291,62 @@ export const LessonComparisonView: React.FC<LessonComparisonViewProps> = ({
                   <div className="lesson-item empty">—</div>
                 )}
               </div>
-              <div className="lesson-col compared-col">
-                {comparison.comparedLesson ? (
-                  <div className="lesson-item">
-                    <div className="lesson-order">#{comparison.comparedOrder}</div>
-                    <div className="lesson-title">{comparison.comparedLesson.title}</div>
-                    {comparison.comparedLesson.variant && (
-                      <div className="lesson-variant">{comparison.comparedLesson.variant}</div>
+                  <div className="lesson-col compared-col">
+                    {comparison.comparedLesson ? (
+                      <div className="lesson-item">
+                        <div className="lesson-order">#{comparison.comparedOrder}</div>
+                        <div className="lesson-title">{comparison.comparedLesson.title}</div>
+                        {comparison.comparedLesson.variant && (
+                          <div className="lesson-variant">{comparison.comparedLesson.variant}</div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="lesson-item empty">—</div>
                     )}
                   </div>
-                ) : (
-                  <div className="lesson-item empty">—</div>
+                  <div className={`lesson-status-badge ${getStatusClass(comparison.status)}`}>
+                    {getStatusLabel(comparison.status)}
+                  </div>
+                </div>
+                
+                {/* Display children (Activities/Quizzes) if they exist */}
+                {hasChildren && childrenToDisplay.length > 0 && (
+                  <div className="lesson-children-container">
+                    {childrenToDisplay.map((childComp, childIndex) => (
+                      <div
+                        key={`child-${index}-${childIndex}`}
+                        className={`lesson-child-row ${getStatusClass(childComp.status)}`}
+                      >
+                        <div className={`lesson-col anchor-col ${childComp.status === 'added' ? 'empty-cell' : ''}`}>
+                          {childComp.anchorChild ? (
+                            <div className="child-item">
+                              <span className="child-type">{childComp.anchorChild.type}:</span>
+                              <span className="child-title">{childComp.anchorChild.title}</span>
+                            </div>
+                          ) : (
+                            <div className="child-item empty">—</div>
+                          )}
+                        </div>
+                        <div className={`lesson-col compared-col ${childComp.status === 'removed' ? 'empty-cell' : ''}`}>
+                          {childComp.comparedChild ? (
+                            <div className="child-item">
+                              <span className="child-type">{childComp.comparedChild.type}:</span>
+                              <span className="child-title">{childComp.comparedChild.title}</span>
+                            </div>
+                          ) : (
+                            <div className="child-item empty">—</div>
+                          )}
+                        </div>
+                        <div className={`child-status-badge ${getStatusClass(childComp.status)}`}>
+                          {getStatusLabel(childComp.status)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
-              <div className={`lesson-status-badge ${getStatusClass(comparison.status)}`}>
-                {getStatusLabel(comparison.status)}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

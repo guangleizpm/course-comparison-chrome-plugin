@@ -15,6 +15,7 @@ interface ComparisonViewProps {
   selectedHierarchies: Array<{ hierarchyId: string; versionId: string } | null>;
   comparisonResults: ComparisonResult[];
   anchorHierarchyId: string | null;
+  inputMode?: 'upload' | 'paste';
 }
 
 type ViewMode = 'metadata' | 'lesson-comparison';
@@ -24,9 +25,18 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
   selectedHierarchies,
   comparisonResults,
   anchorHierarchyId,
+  inputMode = 'upload',
 }) => {
-  const [viewMode, setViewMode] = useState<ViewMode>('metadata');
+  // Default to lesson-comparison view for paste mode (no metadata available)
+  const [viewMode, setViewMode] = useState<ViewMode>(inputMode === 'paste' ? 'lesson-comparison' : 'metadata');
   const [currentComparisonIndex, setCurrentComparisonIndex] = useState<number>(0);
+
+  // Update view mode when input mode changes
+  useEffect(() => {
+    if (inputMode === 'paste') {
+      setViewMode('lesson-comparison');
+    }
+  }, [inputMode]);
 
   const selectedCount = selectedHierarchies.filter(h => h !== null).length;
   const isTwoWay = selectedCount === 2;
@@ -67,26 +77,41 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
   return (
     <div className="comparison-view">
       {/* View Mode Tabs */}
-      <div className="view-mode-tabs">
-        <button
-          className={`tab ${viewMode === 'metadata' ? 'active' : ''}`}
-          onClick={() => setViewMode('metadata')}
-        >
-          Metadata Issues
-        </button>
-        {anchorHierarchy && (
+      {/* Hide Metadata Issues tab in paste mode since pasted text doesn't include metadata */}
+      {inputMode === 'upload' && (
+        <div className="view-mode-tabs">
           <button
-            className={`tab ${viewMode === 'lesson-comparison' ? 'active' : ''}`}
-            onClick={() => setViewMode('lesson-comparison')}
+            className={`tab ${viewMode === 'metadata' ? 'active' : ''}`}
+            onClick={() => setViewMode('metadata')}
+          >
+            Metadata Issues
+          </button>
+          {anchorHierarchy && (
+            <button
+              className={`tab ${viewMode === 'lesson-comparison' ? 'active' : ''}`}
+              onClick={() => setViewMode('lesson-comparison')}
+            >
+              Lesson Comparison
+            </button>
+          )}
+        </div>
+      )}
+      {/* Show only Lesson Comparison tab in paste mode */}
+      {inputMode === 'paste' && anchorHierarchy && (
+        <div className="view-mode-tabs">
+          <button
+            className={`tab active`}
+            disabled
           >
             Lesson Comparison
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Comparison Content */}
       <div className="comparison-content">
-        {viewMode === 'lesson-comparison' && anchorHierarchy ? (
+        {/* In paste mode, always show lesson comparison; in upload mode, respect viewMode */}
+        {((inputMode === 'paste' && anchorHierarchy) || (viewMode === 'lesson-comparison' && anchorHierarchy)) ? (
           <div className="lesson-comparison-container">
             {comparedHierarchies.length === 0 ? (
               <div className="lesson-comparison-empty">

@@ -3,17 +3,21 @@
  * Course Hierarchy Comparison Wireframe
  * Provides interactive interface for comparing course hierarchies (IC, CR, Honors)
  * Adapted for Chrome Extension side panel with expand/collapse functionality
- * Supports CSV file uploads for course data
+ * Supports CSV file uploads and text paste input for course data
  */
 
 import { useState, useEffect } from 'react';
 import { FileUpload } from './components/FileUpload';
+import { PasteInput } from './components/PasteInput';
 import { ComparisonView } from './components/ComparisonView';
 import { Hierarchy, ComparisonResult } from './types';
 import { generateComparisonResults } from './utils/comparisonEngine';
 import './App.css';
 
+type InputMode = 'upload' | 'paste';
+
 function App() {
+  const [inputMode, setInputMode] = useState<InputMode>('upload');
   const [uploadedHierarchies, setUploadedHierarchies] = useState<Array<Hierarchy | null>>([null, null, null]);
   const [anchorHierarchyId, setAnchorHierarchyId] = useState<string | null>(null);
   const [comparisonResults, setComparisonResults] = useState<ComparisonResult[]>([]);
@@ -69,6 +73,28 @@ function App() {
     }
   };
 
+  const handleTextPasted = (position: number, hierarchy: Hierarchy) => {
+    const newUploaded = [...uploadedHierarchies];
+    newUploaded[position] = hierarchy;
+    setUploadedHierarchies(newUploaded);
+    
+    // Auto-select first hierarchy as anchor if none selected
+    if (!anchorHierarchyId && position === 0) {
+      setAnchorHierarchyId(hierarchy.id);
+    }
+  };
+
+  const handleTextRemoved = (position: number) => {
+    handleFileRemoved(position);
+  };
+
+  const handleModeChange = (mode: InputMode) => {
+    setInputMode(mode);
+    // Clear all hierarchies when switching modes
+    setUploadedHierarchies([null, null, null]);
+    setAnchorHierarchyId(null);
+  };
+
   const handleAddThirdHierarchy = () => {
     // Third slot is already available, just needs to be populated
   };
@@ -105,57 +131,114 @@ function App() {
       </header>
 
       <main className="app-main">
-        {/* File Upload Section */}
+        {/* Input Mode Selection */}
+        <section className="mode-selection-section">
+          <div className="mode-toggle">
+            <label className="mode-label">Input Mode:</label>
+            <div className="mode-options">
+              <button
+                type="button"
+                className={`mode-button ${inputMode === 'upload' ? 'active' : ''}`}
+                onClick={() => handleModeChange('upload')}
+              >
+                📁 Upload CSV
+              </button>
+              <button
+                type="button"
+                className={`mode-button ${inputMode === 'paste' ? 'active' : ''}`}
+                onClick={() => handleModeChange('paste')}
+              >
+                📋 Paste Text
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* File Upload / Paste Section */}
         <section className="selection-section">
           <div className="selectors-container">
-            <FileUpload
-              onFileUploaded={(hierarchy) => handleFileUploaded(0, hierarchy)}
-              onFileRemoved={() => handleFileRemoved(0)}
-              label="Course 1"
-              position={0}
-              uploadedHierarchy={uploadedHierarchies[0]}
-            />
+            {inputMode === 'upload' ? (
+              <>
+                <FileUpload
+                  onFileUploaded={(hierarchy) => handleFileUploaded(0, hierarchy)}
+                  onFileRemoved={() => handleFileRemoved(0)}
+                  label="Course 1"
+                  position={0}
+                  uploadedHierarchy={uploadedHierarchies[0]}
+                />
 
-            <FileUpload
-              onFileUploaded={(hierarchy) => handleFileUploaded(1, hierarchy)}
-              onFileRemoved={() => handleFileRemoved(1)}
-              label="Course 2"
-              position={1}
-              uploadedHierarchy={uploadedHierarchies[1]}
-            />
+                <FileUpload
+                  onFileUploaded={(hierarchy) => handleFileUploaded(1, hierarchy)}
+                  onFileRemoved={() => handleFileRemoved(1)}
+                  label="Course 2"
+                  position={1}
+                  uploadedHierarchy={uploadedHierarchies[1]}
+                />
 
-            {showThirdSelector && (
-              <FileUpload
-                onFileUploaded={(hierarchy) => handleFileUploaded(2, hierarchy)}
-                onFileRemoved={() => handleFileRemoved(2)}
-                label="Course 3 (Optional)"
-                position={2}
-                uploadedHierarchy={uploadedHierarchies[2]}
-              />
+                {showThirdSelector && (
+                  <FileUpload
+                    onFileUploaded={(hierarchy) => handleFileUploaded(2, hierarchy)}
+                    onFileRemoved={() => handleFileRemoved(2)}
+                    label="Course 3 (Optional)"
+                    position={2}
+                    uploadedHierarchy={uploadedHierarchies[2]}
+                  />
+                )}
+              </>
+            ) : (
+              <>
+                <PasteInput
+                  onTextPasted={(hierarchy) => handleTextPasted(0, hierarchy)}
+                  onTextRemoved={() => handleTextRemoved(0)}
+                  label="IC Course"
+                  position={0}
+                  pastedHierarchy={uploadedHierarchies[0]}
+                />
+
+                <PasteInput
+                  onTextPasted={(hierarchy) => handleTextPasted(1, hierarchy)}
+                  onTextRemoved={() => handleTextRemoved(1)}
+                  label="CR Course"
+                  position={1}
+                  pastedHierarchy={uploadedHierarchies[1]}
+                />
+
+                <PasteInput
+                  onTextPasted={(hierarchy) => handleTextPasted(2, hierarchy)}
+                  onTextRemoved={() => handleTextRemoved(2)}
+                  label="Honors Course"
+                  position={2}
+                  pastedHierarchy={uploadedHierarchies[2]}
+                />
+              </>
             )}
           </div>
 
-          {/* Add/Remove Third Hierarchy Button */}
-          {!showThirdSelector && selectedCount === 2 && (
-            <div className="add-hierarchy-control">
-              <button
-                className="add-hierarchy-btn"
-                onClick={handleAddThirdHierarchy}
-              >
-                + Add Third Hierarchy (for 3-way comparison)
-              </button>
-            </div>
-          )}
+          {/* Add/Remove Third Hierarchy Button - Only show in upload mode */}
+          {inputMode === 'upload' && (
+            <>
+              {!showThirdSelector && selectedCount === 2 && (
+                <div className="add-hierarchy-control">
+                  <button
+                    className="add-hierarchy-btn"
+                    onClick={handleAddThirdHierarchy}
+                  >
+                    + Add Third Hierarchy (for 3-way comparison)
+                  </button>
+                </div>
+              )}
 
-          {showThirdSelector && (
-            <div className="remove-hierarchy-control">
-              <button
-                className="remove-hierarchy-btn"
-                onClick={handleRemoveThirdHierarchy}
-              >
-                Remove Third Hierarchy
-              </button>
-            </div>
+              {showThirdSelector && (
+                <div className="remove-hierarchy-control">
+                  <button
+                    className="remove-hierarchy-btn"
+                    onClick={handleRemoveThirdHierarchy}
+                  >
+                    Remove Third Hierarchy
+                  </button>
+                </div>
+              )}
+            </>
           )}
 
           {/* Anchor Selection */}
@@ -193,6 +276,7 @@ function App() {
             )}
             comparisonResults={comparisonResults}
             anchorHierarchyId={anchorHierarchyId}
+            inputMode={inputMode}
           />
         </section>
       </main>

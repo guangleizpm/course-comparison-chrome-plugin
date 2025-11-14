@@ -1,0 +1,192 @@
+/**
+ * PasteInput Component Styles
+ * Styling for text paste input component
+ */
+
+.paste-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.paste-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary, #333);
+}
+
+.paste-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.paste-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 0.75rem;
+  border: 2px dashed var(--border-color, #ccc);
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  resize: vertical;
+  background-color: var(--bg-secondary, #f9f9f9);
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.paste-textarea:focus {
+  outline: none;
+  border-color: var(--primary-color, #007bff);
+  background-color: var(--bg-primary, #fff);
+}
+
+.paste-textarea:disabled {
+  background-color: var(--bg-disabled, #f0f0f0);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.paste-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.paste-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: var(--primary-color, #007bff);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+
+.paste-button:hover:not(:disabled) {
+  background-color: var(--primary-hover, #0056b3);
+}
+
+.paste-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.paste-button.processing {
+  opacity: 0.8;
+}
+
+.paste-icon {
+  font-size: 1rem;
+}
+
+.clear-button {
+  padding: 0.5rem 1rem;
+  background-color: var(--bg-secondary, #f0f0f0);
+  color: var(--text-primary, #333);
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.clear-button:hover:not(:disabled) {
+  background-color: var(--bg-hover, #e0e0e0);
+}
+
+.clear-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.paste-error {
+  padding: 0.5rem;
+  background-color: #fee;
+  color: #c33;
+  border: 1px solid #fcc;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.paste-hint {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #666);
+  font-style: italic;
+}
+
+.pasted-text-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background-color: var(--bg-success, #e8f5e9);
+  border: 1px solid var(--border-success, #4caf50);
+  border-radius: 6px;
+}
+
+.text-info-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.text-icon {
+  font-size: 1.2rem;
+  color: var(--success-color, #4caf50);
+}
+
+.text-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.text-name {
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.text-meta {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #666);
+}
+
+.remove-button {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: var(--text-secondary, #666);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.remove-button:hover {
+  background-color: var(--bg-hover, #f0f0f0);
+  color: var(--text-primary, #333);
+}
+
+.spinner {
+  display: inline-block;
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
