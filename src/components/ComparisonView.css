@@ -1,0 +1,154 @@
+.comparison-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: white;
+}
+
+.comparison-view-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: #fafafa;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+}
+
+.empty-state {
+  text-align: center;
+  color: #666;
+}
+
+.empty-state h3 {
+  margin: 0 0 8px 0;
+  color: #333;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.view-mode-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 16px;
+  border-bottom: 2px solid #e0e0e0;
+  background: #f5f5f5;
+}
+
+.tab {
+  padding: 10px 20px;
+  border: none;
+  background: white;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+}
+
+.tab:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.tab.active {
+  background: white;
+  color: #0066cc;
+  border-bottom-color: #0066cc;
+  font-weight: 600;
+}
+
+.comparison-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.comparison-summary {
+  display: flex;
+  gap: 24px;
+  padding: 16px 20px;
+  border-top: 2px solid #e0e0e0;
+  background: #f9f9f9;
+}
+
+.summary-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.stat-value.error {
+  color: #d32f2f;
+}
+
+.lesson-comparison-container {
+  width: 100%;
+}
+
+.lesson-comparison-empty {
+  padding: 40px;
+  text-align: center;
+  color: #666;
+}
+
+.multi-comparison-view {
+  width: 100%;
+}
+
+.comparison-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 20px;
+  border-radius: 8px 8px 0 0;
+}
+
+.nav-button {
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  background: white;
+  color: #333;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.nav-button:hover:not(:disabled) {
+  background: #e9ecef;
+  border-color: #999;
+}
+
+.nav-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.comparison-counter {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
